@@ -1,0 +1,8 @@
+services:
+  telesync:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - ./downloads:/app/downloads
+    restart: unless-stopped
