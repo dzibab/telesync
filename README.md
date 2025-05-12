@@ -23,4 +23,4 @@ Build and start the service:
 docker compose up --build
 ```
 
-The `downloads` directory and `telesync_session.session` will be mounted for persistence.
+The `/tmp/telegram_saved_messages` directory and `telesync_session.session` will be mounted for persistence.

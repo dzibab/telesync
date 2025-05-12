@@ -4,6 +4,6 @@ services:
     env_file:
       - .env
     volumes:
-      - /tmp/downloads:/app/downloads
+      - /tmp/telegram_saved_messages:/app/downloads
       - ./telesync_session.session:/app/telesync_session.session
     restart: unless-stopped
