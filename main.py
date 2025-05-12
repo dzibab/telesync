@@ -6,6 +6,7 @@ from telethon import TelegramClient
 from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 from telethon.tl.functions.messages import GetHistoryRequest
 from dotenv import load_dotenv
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 load_dotenv()
 
@@ -19,6 +20,15 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(message)s',
 )
 logger = logging.getLogger(__name__)
+
+
+def get_file_name(msg):
+    if msg.file and msg.file.name:
+        return msg.file.name
+    elif msg.photo:
+        return f"photo_{msg.id}.jpg"
+    else:
+        return f"file_{msg.id}"
 
 
 async def sync_saved_files():
@@ -42,33 +52,38 @@ async def sync_saved_files():
             if not messages:
                 break
             for msg in messages:
-                if msg.media:
-                    if isinstance(msg.media, (MessageMediaDocument, MessageMediaPhoto)):
-                        # Get file name from message
-                        file_name = None
-                        if msg.file and msg.file.name:
-                            file_name = msg.file.name
-                        elif msg.photo:
-                            # For photos, Telethon generates a name if not present
-                            file_name = f"photo_{msg.id}.jpg"
-                        else:
-                            file_name = f"file_{msg.id}"
-                        file_path = os.path.join(DOWNLOAD_DIR, file_name)
-                        if os.path.exists(file_path):
-                            logger.info(f"Skipping existing file: {file_name}")
-                            continue
-                        try:
-                            await client.download_media(msg, file_path)
-                            logger.info(f"Downloaded: {file_name}")
-                            total += 1
-                        except Exception as e:
-                            logger.error(f"Failed to download {file_name}: {e}")
+                if msg.media and isinstance(msg.media, (MessageMediaDocument, MessageMediaPhoto)):
+                    file_name = get_file_name(msg)
+                    file_path = os.path.join(DOWNLOAD_DIR, file_name)
+                    if os.path.exists(file_path):
+                        logger.info(f"Skipping existing file: {file_name}")
+                        continue
+                    try:
+                        await client.download_media(msg, file_path)
+                        logger.info(f"Downloaded: {file_name}")
+                        total += 1
+                    except Exception as e:
+                        logger.error(f"Failed to download {file_name}: {e}")
             offset_id = messages[-1].id
         logger.info(f"Downloaded {total} files to '{DOWNLOAD_DIR}'")
 
 
+def start_scheduler():
+    scheduler = AsyncIOScheduler()
+    # Run once immediately for testing
+    scheduler.add_job(sync_saved_files, 'date')
+    # Schedule daily at 2 a.m.
+    scheduler.add_job(sync_saved_files, 'cron', hour=2, minute=0)
+    scheduler.start()
+    logger.info('Scheduler started: sync will run immediately and then daily at 2 a.m.')
+    try:
+        asyncio.get_event_loop().run_forever()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+
+
 def main():
-    asyncio.run(sync_saved_files())
+    start_scheduler()
 
 
 if __name__ == "__main__":
