@@ -68,7 +68,7 @@ async def sync_saved_files():
         logger.info(f"Downloaded {total} files to '{DOWNLOAD_DIR}'")
 
 
-def start_scheduler():
+async def start_scheduler():
     scheduler = AsyncIOScheduler()
     # Run once immediately for testing
     scheduler.add_job(sync_saved_files, 'date')
@@ -77,14 +77,14 @@ def start_scheduler():
     scheduler.start()
     logger.info('Scheduler started: sync will run immediately and then daily at 2 a.m.')
     try:
-        asyncio.get_event_loop().run_forever()
+        while True:
+            await asyncio.sleep(3600)  # Keep the loop alive
     except (KeyboardInterrupt, SystemExit):
         pass
 
-
-def main():
-    start_scheduler()
-
+async def main():
+    await start_scheduler()
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
