@@ -42,7 +42,6 @@ SMB_SHARE=your_share_name
 SMB_USER=your_username
 SMB_PASSWORD=your_password
 SMB_PATH=optional/subfolder/path
-SMB_DOMAIN=optional_windows_domain
 ```
 
 ## Running TeleSync
