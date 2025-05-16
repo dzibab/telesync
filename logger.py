@@ -1,16 +1,17 @@
 """
 Logging configuration for TeleSync application.
 """
+
 import logging
 
 # Configure the root logger
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
+    format="%(asctime)s [%(levelname)s] %(message)s",
 )
 
 # Get a named logger for this module
-logger = logging.getLogger('telesync')
+logger = logging.getLogger("telesync")
 
 
 def get_logger(module_name):
@@ -23,4 +24,4 @@ def get_logger(module_name):
     Returns:
         logging.Logger: A configured logger
     """
-    return logging.getLogger(f'telesync.{module_name}')
+    return logging.getLogger(f"telesync.{module_name}")

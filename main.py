@@ -3,12 +3,13 @@ TeleSync - Streams media files from Telegram Saved Messages directly to SMB shar
 
 This is the main entry point for the TeleSync application.
 """
+
 import asyncio
 
 from logger import get_logger
 from scheduler import TelegramSyncScheduler
 
-logger = get_logger('main')
+logger = get_logger("main")
 
 
 async def main():

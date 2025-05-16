@@ -1,6 +1,7 @@
 """
 SMB file upload functionality for TeleSync application.
 """
+
 import socket
 
 from smb.SMBConnection import SMBConnection
@@ -8,7 +9,7 @@ from smb.SMBConnection import SMBConnection
 from logger import get_logger
 import config
 
-logger = get_logger('smb_uploader')
+logger = get_logger("smb_uploader")
 
 
 class SMBUploader:
@@ -26,15 +27,23 @@ class SMBUploader:
         Returns:
             bool: True if connection was successful, False otherwise
         """
-        if not (config.SMB_HOST and config.SMB_SHARE and config.SMB_USER and config.SMB_PASSWORD):
+        if not (
+            config.SMB_HOST
+            and config.SMB_SHARE
+            and config.SMB_USER
+            and config.SMB_PASSWORD
+        ):
             logger.debug("SMB config not provided, cannot connect.")
             return False
 
         try:
             self.conn = SMBConnection(
-                config.SMB_USER, config.SMB_PASSWORD,
-                self.client_name, config.SMB_HOST,
-                domain=config.SMB_DOMAIN, use_ntlm_v2=True
+                config.SMB_USER,
+                config.SMB_PASSWORD,
+                self.client_name,
+                config.SMB_HOST,
+                domain=config.SMB_DOMAIN,
+                use_ntlm_v2=True,
             )
 
             if self.conn.connect(config.SMB_HOST, 139):
@@ -68,14 +77,14 @@ class SMBUploader:
         Returns:
             str: Clean folder path
         """
-        folder = folder.strip().lstrip('/').lstrip('\\') if folder else ''
+        folder = folder.strip().lstrip("/").lstrip("\\") if folder else ""
 
-        if folder.lower().startswith(config.SMB_SHARE.lower() + '/'):
-            folder = folder[len(config.SMB_SHARE)+1:]
-        elif folder.lower().startswith(config.SMB_SHARE.lower() + '\\'):
-            folder = folder[len(config.SMB_SHARE)+1:]
+        if folder.lower().startswith(config.SMB_SHARE.lower() + "/"):
+            folder = folder[len(config.SMB_SHARE) + 1 :]
+        elif folder.lower().startswith(config.SMB_SHARE.lower() + "\\"):
+            folder = folder[len(config.SMB_SHARE) + 1 :]
         elif folder.lower() == config.SMB_SHARE.lower():
-            folder = ''
+            folder = ""
 
         return folder
 
@@ -93,8 +102,8 @@ class SMBUploader:
             return True
 
         # Split and create each part if needed
-        current = ''
-        for part in folder.replace('\\', '/').split('/'):
+        current = ""
+        for part in folder.replace("\\", "/").split("/"):
             if not part:
                 continue
             current = f"{current}/{part}" if current else part
@@ -117,7 +126,7 @@ class SMBUploader:
         Returns:
             bool: True if connection is active, False otherwise
         """
-        if self.conn and hasattr(self.conn, 'sock') and self.conn.sock:
+        if self.conn and hasattr(self.conn, "sock") and self.conn.sock:
             # Connection exists and has an active socket
             return True
 
@@ -143,7 +152,7 @@ class SMBUploader:
             remote_path = f"{folder}/{remote_name}" if folder else remote_name
 
             # Try to get file info - if successful, file exists
-            file_info = self.conn.getAttributes(config.SMB_SHARE, remote_path)
+            self.conn.getAttributes(config.SMB_SHARE, remote_path)
             return True
         except Exception as e:
             # File doesn't exist or error occurred
@@ -179,7 +188,9 @@ class SMBUploader:
 
             # Check if file already exists
             if check_exists and self.file_exists(remote_name):
-                logger.info(f"File already exists on SMB: {remote_path}, skipping upload")
+                logger.info(
+                    f"File already exists on SMB: {remote_path}, skipping upload"
+                )
                 return True
 
             # Upload the file
@@ -254,7 +265,7 @@ class SMBUploader:
             bool: True if upload was successful, False otherwise
         """
         try:
-            with open(local_path, 'rb') as f:
+            with open(local_path, "rb") as f:
                 return SMBUploader.upload_from_stream(f, remote_name)
         except Exception as e:
             logger.error(f"SMB upload failed for {remote_name}: {e}")

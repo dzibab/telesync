@@ -1,6 +1,7 @@
 """
 Telegram client module for TeleSync application.
 """
+
 import io
 
 from telethon import TelegramClient
@@ -11,7 +12,7 @@ from logger import get_logger
 import config
 from smb_uploader import SMBUploader
 
-logger = get_logger('telegram_client')
+logger = get_logger("telegram_client")
 
 
 class TelegramSavedMessagesClient:
@@ -48,12 +49,17 @@ class TelegramSavedMessagesClient:
             int: Number of files uploaded
         """
         # Check if SMB is configured
-        if not (config.SMB_HOST and config.SMB_SHARE and config.SMB_USER and config.SMB_PASSWORD):
+        if not (
+            config.SMB_HOST
+            and config.SMB_SHARE
+            and config.SMB_USER
+            and config.SMB_PASSWORD
+        ):
             logger.error("SMB configuration not provided. Cannot continue.")
             return 0
 
         async with self.client:
-            saved = await self.client.get_entity('me')
+            saved = await self.client.get_entity("me")
             offset_id = 0
             total = 0
 
@@ -64,36 +70,46 @@ class TelegramSavedMessagesClient:
 
             try:
                 while True:
-                    history = await self.client(GetHistoryRequest(
-                        peer=saved,
-                        offset_id=offset_id,
-                        offset_date=None,
-                        add_offset=0,
-                        limit=100,
-                        max_id=0,
-                        min_id=0,
-                        hash=0
-                    ))
+                    history = await self.client(
+                        GetHistoryRequest(
+                            peer=saved,
+                            offset_id=offset_id,
+                            offset_date=None,
+                            add_offset=0,
+                            limit=100,
+                            max_id=0,
+                            min_id=0,
+                            hash=0,
+                        )
+                    )
 
                     messages = history.messages
                     if not messages:
                         break
 
                     for msg in messages:
-                        if msg.media and isinstance(msg.media, (MessageMediaDocument, MessageMediaPhoto)):
+                        if msg.media and isinstance(
+                            msg.media, (MessageMediaDocument, MessageMediaPhoto)
+                        ):
                             file_name = self.get_file_name(msg)
 
                             try:
                                 # Stream directly from Telegram
                                 file_stream = io.BytesIO()
                                 await self.client.download_media(msg, file_stream)
-                                file_stream.seek(0)  # Reset stream position to beginning
+                                file_stream.seek(
+                                    0
+                                )  # Reset stream position to beginning
 
                                 # Upload using the persistent connection, check if file exists first
                                 if self.uploader.file_exists(file_name):
-                                    logger.info(f"File already exists on SMB: {file_name}, skipping upload")
+                                    logger.info(
+                                        f"File already exists on SMB: {file_name}, skipping upload"
+                                    )
                                     total += 1  # Count as success since the file is already there
-                                elif self.uploader.upload_file(file_stream, file_name, check_exists=False):
+                                elif self.uploader.upload_file(
+                                    file_stream, file_name, check_exists=False
+                                ):
                                     # We already checked existence, no need to check again during upload
                                     logger.info(f"Uploaded to SMB: {file_name}")
                                     total += 1
