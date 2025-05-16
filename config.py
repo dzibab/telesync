@@ -11,7 +11,6 @@ load_dotenv()
 API_ID = os.getenv('API_ID')
 API_HASH = os.getenv('API_HASH')
 SESSION = 'telesync_session'
-DOWNLOAD_DIR = 'downloads'
 
 # SMB configuration
 SMB_HOST = os.getenv('SMB_HOST')

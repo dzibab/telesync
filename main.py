@@ -1,5 +1,5 @@
 """
-TeleSync - Synchronizes media files from Telegram Saved Messages to local storage and SMB shares.
+TeleSync - Streams media files from Telegram Saved Messages directly to SMB shares.
 
 This is the main entry point for the TeleSync application.
 """

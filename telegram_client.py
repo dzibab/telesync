@@ -1,7 +1,7 @@
 """
 Telegram client module for TeleSync application.
 """
-import os
+import io
 
 from telethon import TelegramClient
 from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
@@ -19,6 +19,7 @@ class TelegramSavedMessagesClient:
 
     def __init__(self):
         self.client = TelegramClient(config.SESSION, config.API_ID, config.API_HASH)
+        self.uploader = SMBUploader()
 
     @staticmethod
     def get_file_name(msg):
@@ -40,56 +41,68 @@ class TelegramSavedMessagesClient:
 
     async def sync_saved_files(self):
         """
-        Downloads all media from Telegram Saved Messages that hasn't been downloaded yet.
-        Also uploads each downloaded file to SMB if configured.
+        Streams all media from Telegram Saved Messages directly to SMB share.
+        Uses a single SMB connection for multiple file uploads.
 
         Returns:
-            int: Number of files downloaded
+            int: Number of files uploaded
         """
-        os.makedirs(config.DOWNLOAD_DIR, exist_ok=True)
+        # Check if SMB is configured
+        if not (config.SMB_HOST and config.SMB_SHARE and config.SMB_USER and config.SMB_PASSWORD):
+            logger.error("SMB configuration not provided. Cannot continue.")
+            return 0
 
         async with self.client:
             saved = await self.client.get_entity('me')
             offset_id = 0
             total = 0
 
-            while True:
-                history = await self.client(GetHistoryRequest(
-                    peer=saved,
-                    offset_id=offset_id,
-                    offset_date=None,
-                    add_offset=0,
-                    limit=100,
-                    max_id=0,
-                    min_id=0,
-                    hash=0
-                ))
+            # Establish SMB connection before processing files
+            if not self.uploader.connect():
+                logger.error("Could not establish SMB connection. Aborting sync.")
+                return 0
 
-                messages = history.messages
-                if not messages:
-                    break
+            try:
+                while True:
+                    history = await self.client(GetHistoryRequest(
+                        peer=saved,
+                        offset_id=offset_id,
+                        offset_date=None,
+                        add_offset=0,
+                        limit=100,
+                        max_id=0,
+                        min_id=0,
+                        hash=0
+                    ))
 
-                for msg in messages:
-                    if msg.media and isinstance(msg.media, (MessageMediaDocument, MessageMediaPhoto)):
-                        file_name = self.get_file_name(msg)
-                        file_path = os.path.join(config.DOWNLOAD_DIR, file_name)
+                    messages = history.messages
+                    if not messages:
+                        break
 
-                        if os.path.exists(file_path):
-                            logger.info(f"Skipping existing file: {file_name}")
-                            continue
+                    for msg in messages:
+                        if msg.media and isinstance(msg.media, (MessageMediaDocument, MessageMediaPhoto)):
+                            file_name = self.get_file_name(msg)
 
-                        try:
-                            await self.client.download_media(msg, file_path)
-                            logger.info(f"Downloaded: {file_name}")
-                            total += 1
+                            try:
+                                # Stream directly from Telegram
+                                file_stream = io.BytesIO()
+                                await self.client.download_media(msg, file_stream)
+                                file_stream.seek(0)  # Reset stream position to beginning
 
-                            # Upload to SMB if configured
-                            SMBUploader.upload(file_path, file_name)
+                                # Upload using the persistent connection
+                                if self.uploader.upload_file(file_stream, file_name):
+                                    logger.info(f"Uploaded to SMB: {file_name}")
+                                    total += 1
+                                else:
+                                    logger.error(f"Failed to upload {file_name} to SMB")
 
-                        except Exception as e:
-                            logger.error(f"Failed to download {file_name}: {e}")
+                            except Exception as e:
+                                logger.error(f"Failed to process {file_name}: {e}")
 
-                offset_id = messages[-1].id
+                    offset_id = messages[-1].id
+            finally:
+                # Always close the SMB connection when done
+                self.uploader.close()
 
-            logger.info(f"Downloaded {total} files to '{config.DOWNLOAD_DIR}'")
+            logger.info(f"Uploaded {total} files to SMB share")
             return total
