@@ -109,18 +109,60 @@ class SMBUploader:
                     return False
         return True
 
-    def upload_file(self, file_stream, remote_name):
+    def ensure_connected(self):
+        """
+        Ensure there is an active connection to the SMB server.
+        Attempt to reconnect if the connection is closed.
+
+        Returns:
+            bool: True if connection is active, False otherwise
+        """
+        if self.conn and hasattr(self.conn, 'sock') and self.conn.sock:
+            # Connection exists and has an active socket
+            return True
+
+        # Try to establish a new connection
+        return self.connect()
+
+    def file_exists(self, remote_name):
+        """
+        Check if a file already exists on the SMB share.
+
+        Args:
+            remote_name (str): Filename to check on the remote share
+
+        Returns:
+            bool: True if file exists, False otherwise
+        """
+        if not self.ensure_connected():
+            logger.error("No active SMB connection")
+            return False
+
+        try:
+            folder = self._get_clean_folder_path(config.SMB_PATH)
+            remote_path = f"{folder}/{remote_name}" if folder else remote_name
+
+            # Try to get file info - if successful, file exists
+            file_info = self.conn.getAttributes(config.SMB_SHARE, remote_path)
+            return True
+        except Exception as e:
+            # File doesn't exist or error occurred
+            logger.debug(f"File check for {remote_name}: {str(e)}")
+            return False
+
+    def upload_file(self, file_stream, remote_name, check_exists=True):
         """
         Upload a file to the connected SMB share.
 
         Args:
             file_stream: File-like object to upload
             remote_name (str): Filename to use on the remote share
+            check_exists (bool): Whether to check if file already exists before uploading
 
         Returns:
-            bool: True if successful, False otherwise
+            bool: True if successful or file already exists, False otherwise
         """
-        if not self.conn:
+        if not self.ensure_connected():
             logger.error("No active SMB connection")
             return False
 
@@ -134,6 +176,11 @@ class SMBUploader:
 
             # Build final remote path
             remote_path = f"{folder}/{remote_name}" if folder else remote_name
+
+            # Check if file already exists
+            if check_exists and self.file_exists(remote_name):
+                logger.info(f"File already exists on SMB: {remote_path}, skipping upload")
+                return True
 
             # Upload the file
             self.conn.storeFile(config.SMB_SHARE, remote_path, file_stream)
@@ -154,7 +201,7 @@ class SMBUploader:
         Returns:
             int: Count of successfully uploaded files
         """
-        if not self.connect():
+        if not self.ensure_connected():
             return 0
 
         success_count = 0
@@ -181,10 +228,13 @@ class SMBUploader:
             bool: True if upload was successful, False otherwise
         """
         uploader = SMBUploader()
-        if not uploader.connect():
+
+        # Use ensure_connected which will try to connect if needed
+        if not uploader.ensure_connected():
             return False
 
         try:
+            # Already checks for duplicates by default
             result = uploader.upload_file(file_stream, remote_name)
             return result
         finally:

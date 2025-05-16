@@ -89,8 +89,12 @@ class TelegramSavedMessagesClient:
                                 await self.client.download_media(msg, file_stream)
                                 file_stream.seek(0)  # Reset stream position to beginning
 
-                                # Upload using the persistent connection
-                                if self.uploader.upload_file(file_stream, file_name):
+                                # Upload using the persistent connection, check if file exists first
+                                if self.uploader.file_exists(file_name):
+                                    logger.info(f"File already exists on SMB: {file_name}, skipping upload")
+                                    total += 1  # Count as success since the file is already there
+                                elif self.uploader.upload_file(file_stream, file_name, check_exists=False):
+                                    # We already checked existence, no need to check again during upload
                                     logger.info(f"Uploaded to SMB: {file_name}")
                                     total += 1
                                 else:
