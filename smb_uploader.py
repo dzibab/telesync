@@ -6,10 +6,10 @@ import socket
 
 from smb.SMBConnection import SMBConnection
 
-from logger import get_logger
 import config
+from logger import get_logger
 
-logger = get_logger("smb_uploader")
+logger = get_logger(__name__)
 
 
 class SMBUploader:

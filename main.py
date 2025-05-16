@@ -9,7 +9,7 @@ import asyncio
 from logger import get_logger
 from scheduler import TelegramSyncScheduler
 
-logger = get_logger("main")
+logger = get_logger(__name__)
 
 
 async def main():

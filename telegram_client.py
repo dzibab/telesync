@@ -8,11 +8,11 @@ from telethon import TelegramClient
 from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 from telethon.tl.functions.messages import GetHistoryRequest
 
-from logger import get_logger
 import config
+from logger import get_logger
 from smb_uploader import SMBUploader
 
-logger = get_logger("telegram_client")
+logger = get_logger(__name__)
 
 
 class TelegramSavedMessagesClient:

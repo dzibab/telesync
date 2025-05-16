@@ -10,9 +10,6 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 
-# Get a named logger for this module
-logger = logging.getLogger("telesync")
-
 
 def get_logger(module_name):
     """

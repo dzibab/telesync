@@ -7,7 +7,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from logger import get_logger
 from telegram_client import TelegramSavedMessagesClient
 
-logger = get_logger("scheduler")
+logger = get_logger(__name__)
 
 
 class TelegramSyncScheduler:
